@@ -26,13 +26,14 @@
 #pragma once
 
 #include "DisplayVBlankMonitorThreaded.h"
+#include <WebCore/AnimationFrameRate.h>
 
 namespace WebKit {
 
 class DisplayVBlankMonitorTimer final : public DisplayVBlankMonitorThreaded {
 public:
-    static std::unique_ptr<DisplayVBlankMonitor> create();
-    explicit DisplayVBlankMonitorTimer();
+    static std::unique_ptr<DisplayVBlankMonitor> create(unsigned refreshRate = WebCore::FullSpeedFramesPerSecond);
+    explicit DisplayVBlankMonitorTimer(unsigned refreshRate);
 
 private:
     Type type() const override { return Type::Timer; }

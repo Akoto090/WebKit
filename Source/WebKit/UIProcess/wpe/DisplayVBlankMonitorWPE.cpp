@@ -27,6 +27,7 @@
 #include "DisplayVBlankMonitorWPE.h"
 
 #if ENABLE(WPE_PLATFORM)
+#include "DisplayVBlankMonitorTimer.h"
 #include "Logging.h"
 #include "ScreenManager.h"
 #include <wpe/wpe-platform.h>
@@ -41,13 +42,16 @@ std::unique_ptr<DisplayVBlankMonitor> DisplayVBlankMonitorWPE::create(PlatformDi
         return nullptr;
     }
 
+    int refreshRate = wpe_screen_get_refresh_rate(screen);
     GRefPtr<WPEScreenSyncObserver> observer = adoptGRef(wpe_screen_get_sync_observer(screen));
     if (!observer) {
-        RELEASE_LOG_FAULT(DisplayLink, "Could not create a vblank monitor for display %u: screen sync not supported by WPE platform", displayID);
-        return nullptr;
+        // Drivers without DRM vblank events (NVIDIA's proprietary one) end up here, but the
+        // screen still knows its refresh rate, so tick at that rather than the default 60Hz.
+        RELEASE_LOG_FAULT(DisplayLink, "Could not create a vblank monitor for display %u: screen sync not supported by WPE platform, using a timer", displayID);
+        return DisplayVBlankMonitorTimer::create(refreshRate > 0 ? refreshRate / 1000 : WebCore::FullSpeedFramesPerSecond);
     }
 
-    return makeUnique<DisplayVBlankMonitorWPE>(wpe_screen_get_refresh_rate(screen) / 1000, WTF::move(observer));
+    return makeUnique<DisplayVBlankMonitorWPE>(refreshRate / 1000, WTF::move(observer));
 }
 
 DisplayVBlankMonitorWPE::DisplayVBlankMonitorWPE(unsigned refreshRate, GRefPtr<WPEScreenSyncObserver>&& observer)
