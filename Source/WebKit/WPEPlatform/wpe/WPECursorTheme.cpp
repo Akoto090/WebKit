@@ -134,7 +134,21 @@ std::unique_ptr<CursorTheme> CursorTheme::create(const char* name, uint32_t size
 
 std::unique_ptr<CursorTheme> CursorTheme::create()
 {
-    return create("default", 24);
+    // Same variables libwayland-cursor and GTK read; compositors export them
+    // so every client draws the user's theme. "default" alone only resolves
+    // an Inherits= naming a theme in the same icons directory.
+    const char* name = g_getenv("XCURSOR_THEME");
+    if (!name || !*name)
+        name = "default";
+
+    uint32_t size = 24;
+    if (const char* sizeString = g_getenv("XCURSOR_SIZE")) {
+        guint64 parsed = g_ascii_strtoull(sizeString, nullptr, 10);
+        if (parsed > 0 && parsed <= 256)
+            size = parsed;
+    }
+
+    return create(name, size);
 }
 
 CursorTheme::CursorTheme(UTF8CString&& path, uint32_t size, Vector<UTF8CString>&& inherited)
